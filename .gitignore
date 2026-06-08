@@ -1,0 +1,30 @@
+# image-composer-tool build artifacts
+workspace/
+cache/
+tmp/
+builds/
+
+# OS disk images (large binaries)
+*.raw
+*.raw.gz
+*.vhdx
+*.iso
+*.qcow2
+*.vmdk
+*.vdi
+
+# Build logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# System
+*.swp
+*.swo
+*~
+.DS_Store
