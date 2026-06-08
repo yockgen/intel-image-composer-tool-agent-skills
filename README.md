@@ -1,4 +1,4 @@
-# ROS2 Image Builder — Skills & Template Migration
+# Intel Image Builder — Skills & Template Migration
 
 This project uses two Hermes Agent skills to build and customize OS disk
 images with the `image-composer-tool`:
