@@ -3,7 +3,7 @@
 This project uses two Hermes Agent skills to build and customize OS disk
 images with the `image-composer-tool`:
 
-- **`image-composer-build`** — Build disk images from canonical YAML templates
+- **`image-composer-build`** — Build disk images from Intel image componser tool's YAML templates
 - **`image-composer-custom`** — Extend base templates with extra packages/repos
   without modifying the originals
 - **`ros2-with-tools`** — Custom user template: ROS2 Jazzy + nano + iperf3
