@@ -150,6 +150,75 @@ ls -lh workspace/ubuntu-ubuntu24-x86_64/imagebuild/ros2-prod-image/
 
 ---
 
+## 7. External Repo (Generic) — "Ubuntu + Docker CE from docker.com"
+
+This demo proves the `packageRepositories` mechanism is **not** ROS2-specific
+— it works the same way for any external repo. Just change the URL, GPG key,
+and package names:
+
+```bash
+# 1. Customize Ubuntu minimal with Docker's official repo
+python3 ~/.hermes/skills/devops/image-composer-custom/scripts/customize-template.py \
+  ubuntu24-x86_64-minimal-raw.yml \
+  --name ubuntu-docker \
+  --desc "Ubuntu 24.04 minimal with Docker CE from official repo" \
+  --add-packages "docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin" \
+  --add-repo "https://download.docker.com/linux/ubuntu noble stable" \
+  --add-repo-key "https://download.docker.com/linux/ubuntu/gpg"
+```
+
+```bash
+# 2. Add a default login user (required for SSH access)
+#    Ubuntu uses 'sudo' group (not 'wheel')
+python3 -c "
+import yaml
+path = '$HOME/.hermes/user-templates/ubuntu-docker.yml'
+with open(path) as f:
+    data = yaml.safe_load(f)
+data.setdefault('systemConfig', {}).setdefault('users', []).append({
+    'name': 'user',
+    'password': 'user',
+    'groups': ['sudo']
+})
+with open(path, 'w') as f:
+    yaml.dump(data, f, default_flow_style=False)
+print('user section added')
+"
+```
+
+```bash
+# 3. Build the image
+sudo -E ./image-composer-tool build ~/.hermes/user-templates/ubuntu-docker.yml
+```
+
+```bash
+# 4. Verify the artifact
+ls -lh workspace/ubuntu-ubuntu24-x86_64/imagebuild/ubuntu-docker/
+```
+
+**Key takeaways:**
+
+| Aspect | This demo | ROS2 demo (step 4) |
+|--------|-----------|-------------------|
+| Base template | `ubuntu24-x86_64-minimal-raw.yml` | same base |
+| External repo | `download.docker.com/linux/ubuntu` | `packages.ros.org/ros2/ubuntu` |
+| GPG key | Docker's GPG key | ROS2's GPG key |
+| Packages | `docker-ce`, `containerd.io`, etc. | `ros-jazzy-ros-base`, etc. |
+| User group | `sudo` (Ubuntu standard) | *(varies)* |
+| **Mechanism** | `packageRepositories` — **identical** | `packageRepositories` — **identical** |
+
+The only things that change between repos are:
+1. The repo **URL**
+2. The **GPG key** URL
+3. The **package names** to install
+
+Everything else (the YAML structure, the build pipeline, the GPG handling,
+the artifact output) works exactly the same way. This mechanism supports
+**any** apt-compatible external repo — Docker, ROS2, NodeSource, Microsoft,
+EPEL (for RCD/Rocky), or your own internal mirror.
+
+---
+
 ## Suggested Video Flow (3-4 minutes)
 
 | Time | Scene | Action |
