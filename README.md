@@ -1,4 +1,4 @@
-# AI Agent Skills for Image Builder
+# AI Agent Skills for Intel Image Composer Tool
 
 This repository contains plain markdown skill files that **any AI coding
 agent** (Claude Code, Codex, Cline, Hermes Agent, Continue, etc.) can load
