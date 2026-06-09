@@ -1,28 +1,32 @@
-# Hermes Skills for Image Builder
+# AI Agent Skills for Image Builder
 
-This project contains Hermes Agent skills to build and customize OS disk
-images using the **image-composer-tool** — a declarative YAML-based image
-builder. It supports 8+ OS families (Ubuntu, Debian, RCD10/Rocky Linux,
+This repository contains plain markdown skill files that **any AI coding
+agent** (Claude Code, Codex, Cline, Hermes Agent, Continue, etc.) can load
+and follow to build and customize OS disk images using the
+**image-composer-tool** — a declarative YAML-based image builder.
+
+The build tool supports 8+ OS families (Ubuntu, Debian, RCD10/Rocky Linux,
 AZL3, ELXR, EMT3, and others) and produces raw, vhdx, qcow2, vmdk, iso,
 and initrd artifacts.
 
-The build tool itself lives at:
+The tool itself is available at:
 **https://github.com/open-edge-platform/image-composer-tool**
-
-The skills here are checked into git so they can be versioned, shared, and
-migrated between machines.
 
 ---
 
 ## Skills
 
-| Skill | Purpose |
-|-------|---------|
-| **`image-composer-build`** | Build disk images from YAML templates — full workflow, pitfalls, one-shot recipes |
-| **`image-composer-custom`** | Extend base templates with extra packages and external repos without touching the originals |
+Each skill is a markdown document under `skills/` with step-by-step
+instructions, commands, pitfalls, and verification steps:
 
-Both skills live under `skills/` and support the `skill_view()` / `skills_list()`
-commands in Hermes Agent when installed to `~/.hermes/skills/devops/`.
+| Skill | File | What it covers |
+|-------|------|----------------|
+| **image-composer-build** | `skills/image-composer-build/SKILL.md` | Building disk images from YAML templates — full workflow, pitfalls, one-shot recipes for all OS families |
+| **image-composer-custom** | `skills/image-composer-custom/SKILL.md` | Cloning and extending base templates with extra packages and external repos — without touching the originals |
+
+> **Note:** Each SKILL.md has a YAML frontmatter block with metadata for
+> Hermes Agent (`skill_view()`). If you use a different agent, just load
+> the markdown body as instruction context — the content is fully generic.
 
 ---
 
@@ -44,13 +48,13 @@ commands in Hermes Agent when installed to `~/.hermes/skills/devops/`.
 │           ├── error-demo-non-existent-package.md
 │           ├── external-repo-docker-test.md # Tested: Ubuntu + Docker CE from docker.com
 │           └── rcd10-customization-example.md # Tested: RCD10 + nano + iperf3
-├── user-templates/                          # Custom templates (`.gitignored`, per-machine)
+├── user-templates/                          # Custom templates (per-machine, not checked in)
 ├── tutorial.md                              # 7-step walkthrough from discovery to build
 ├── README.md
 ```
 
-User-customized templates (`~/.hermes/user-templates/`) are per-machine,
-not checked in.
+User-customized templates go to `~/.hermes/user-templates/` (or your
+agent's equivalent) and are per-machine, not checked in.
 
 ---
 
@@ -67,7 +71,7 @@ python3 skills/image-composer-custom/scripts/customize-template.py \
   --desc "Ubuntu 24.04 + dev tools" \
   --add-packages "git,vim,htop"
 
-# 3. Add a default login user (edit the generated YAML, or use the snippet below)
+# 3. Add a default login user
 python3 -c "
 import yaml
 path = '$HOME/.hermes/user-templates/my-dev-image.yml'
@@ -111,7 +115,6 @@ See `tutorial.md` (step 7) for a full walkthrough.
 - **image-composer-tool** binary — get it from:
   https://github.com/open-edge-platform/image-composer-tool
 - **Python 3** + **pyyaml** — `pip install pyyaml` if missing
-- **Hermes Agent** (optional) — if using `skill_view()` to load the skills
 - **Root/sudo** — the build tool needs loop device access for disk images
 
 ---
@@ -119,16 +122,19 @@ See `tutorial.md` (step 7) for a full walkthrough.
 ## Migration to Another Machine
 
 ```bash
-# Archive skills (everything under skills/ is portable)
+# Archive everything (portable — no machine-specific paths)
 tar czf image-builder-skills.tar.gz skills/ tutorial.md README.md
 
 # Transfer & extract on the target
 tar xzf image-builder-skills.tar.gz -d /path/to/project
 
-# Install into Hermes (optional)
+# Optional: install to Hermes Agent
 cp -r skills/image-composer-build ~/.hermes/skills/devops/
 cp -r skills/image-composer-custom ~/.hermes/skills/devops/
 ```
+
+For other AI agents, just point them at the `skills/` directory or load
+the SKILL.md files as instruction context.
 
 On the target machine you also need the `image-composer-tool` binary and
 the `image-templates/` directory from the upstream repo.
