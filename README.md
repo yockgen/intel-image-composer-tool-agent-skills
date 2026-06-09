@@ -1,123 +1,134 @@
-# Intel Image Builder — Skills & Template Migration
+# Hermes Skills for Image Builder
 
-This project uses two Hermes Agent skills to build and customize OS disk
-images with the `image-composer-tool`:
+This project contains Hermes Agent skills to build and customize OS disk
+images using the **image-composer-tool** — a declarative YAML-based image
+builder. It supports 8+ OS families (Ubuntu, Debian, RCD10/Rocky Linux,
+AZL3, ELXR, EMT3, and others) and produces raw, vhdx, qcow2, vmdk, iso,
+and initrd artifacts.
 
-- **`image-composer-build`** — Build disk images from Intel image componser tool's YAML templates
-- **`image-composer-custom`** — Extend base templates with extra packages/repos
-  without modifying the originals
-- **`ros2-with-tools`** — Custom user template: ROS2 Jazzy + nano + iperf3
+The build tool itself lives at:
+**https://github.com/open-edge-platform/image-composer-tool**
+
+The skills here are checked into git so they can be versioned, shared, and
+migrated between machines.
+
+---
+
+## Skills
+
+| Skill | Purpose |
+|-------|---------|
+| **`image-composer-build`** | Build disk images from YAML templates — full workflow, pitfalls, one-shot recipes |
+| **`image-composer-custom`** | Extend base templates with extra packages and external repos without touching the originals |
+
+Both skills live under `skills/` and support the `skill_view()` / `skills_list()`
+commands in Hermes Agent when installed to `~/.hermes/skills/devops/`.
 
 ---
 
 ## Project Structure
 
 ```
-/data/hermes/osic/
-├── image-composer-tool        # Build binary
-├── image-templates/           # Canonical base templates (60+)
-├── config/                    # OS provider configs
-├── skills/                    # <-- checked into git (this project)
+.
+├── skills/
 │   ├── image-composer-build/
-│   │   ├── SKILL.md
-│   │   ├── scripts/list-templates.py
-│   │   └── references/gpg-key-workaround.md
-│   ├── image-composer-custom/
-│   │   ├── SKILL.md
-│   │   └── scripts/customize-template.py
-│   └── user-templates/
-│       └── ros2-with-tools.yml
+│   │   ├── SKILL.md                         # Build workflow, pitfalls, recipes
+│   │   ├── scripts/list-templates.py        # Discover & filter base templates
+│   │   └── references/
+│   │       ├── gpg-key-workaround.md        # Fix GPG verification failures
+│   │       └── non-fatal-chroot-warnings.md # systemd-boot EFI warnings
+│   └── image-composer-custom/
+│       ├── SKILL.md                         # Customization workflow, options, examples
+│       ├── scripts/customize-template.py    # Injects packages/repos into a base template
+│       └── references/
+│           ├── error-demo-non-existent-package.md
+│           ├── external-repo-docker-test.md # Tested: Ubuntu + Docker CE from docker.com
+│           └── rcd10-customization-example.md # Tested: RCD10 + nano + iperf3
+├── user-templates/                          # Custom templates (`.gitignored`, per-machine)
+├── tutorial.md                              # 7-step walkthrough from discovery to build
 ├── README.md
-└── tutorial.md
 ```
 
-### Skills (in `skills/` directory)
+User-customized templates (`~/.hermes/user-templates/`) are per-machine,
+not checked in.
 
-| Path | Contents |
-|------|----------|
-| `skills/image-composer-build/SKILL.md` | Skill definition — build workflow, pitfalls, one-shot recipes |
-| `skills/image-composer-build/scripts/list-templates.py` | Discover & filter available base templates |
-| `skills/image-composer-build/references/gpg-key-workaround.md` | Fix for GPG key verification failures in 3rd-party repos |
-| `skills/image-composer-custom/SKILL.md` | Skill definition — customization workflow, options, examples |
-| `skills/image-composer-custom/scripts/customize-template.py` | Injects packages/repos into a base template |
+---
 
-### User Template (in `skills/user-templates/`)
+## Quick Start
 
-| File | Description |
-|------|-------------|
-| `skills/user-templates/ros2-with-tools.yml` | Ubuntu 24.04 + ROS2 Jazzy + nano + iperf3 |
+```bash
+# 1. List available base templates
+python3 skills/image-composer-build/scripts/list-templates.py
+
+# 2. Customize a base template with extra packages
+python3 skills/image-composer-custom/scripts/customize-template.py \
+  ubuntu24-x86_64-minimal-raw.yml \
+  --name my-dev-image \
+  --desc "Ubuntu 24.04 + dev tools" \
+  --add-packages "git,vim,htop"
+
+# 3. Add a default login user (edit the generated YAML, or use the snippet below)
+python3 -c "
+import yaml
+path = '$HOME/.hermes/user-templates/my-dev-image.yml'
+with open(path) as f:
+    data = yaml.safe_load(f)
+data.setdefault('systemConfig', {}).setdefault('users', []).append({
+    'name': 'user', 'password': 'user', 'groups': ['sudo']
+})
+with open(path, 'w') as f:
+    yaml.dump(data, f, default_flow_style=False)
+"
+
+# 4. Build
+sudo -E ./image-composer-tool build ~/.hermes/user-templates/my-dev-image.yml
+```
+
+---
+
+## External Repositories (Generic)
+
+You can add packages from **any** external apt or rpm repository — not just
+the default OS repos. The `--add-repo` / `--add-repo-key` flags work the
+same way for Docker, ROS2, EPEL, NodeSource, Microsoft, or your own internal
+mirror. Only the URL, GPG key, and package names change.
+
+```bash
+python3 skills/image-composer-custom/scripts/customize-template.py \
+  ubuntu24-x86_64-minimal-raw.yml \
+  --name my-docker-image \
+  --add-packages "docker-ce,docker-ce-cli,containerd.io" \
+  --add-repo "https://download.docker.com/linux/ubuntu noble stable" \
+  --add-repo-key "https://download.docker.com/linux/ubuntu/gpg"
+```
+
+See `tutorial.md` (step 7) for a full walkthrough.
+
+---
+
+## Requirements
+
+- **image-composer-tool** binary — get it from:
+  https://github.com/open-edge-platform/image-composer-tool
+- **Python 3** + **pyyaml** — `pip install pyyaml` if missing
+- **Hermes Agent** (optional) — if using `skill_view()` to load the skills
+- **Root/sudo** — the build tool needs loop device access for disk images
 
 ---
 
 ## Migration to Another Machine
 
-### Prerequisites on the target machine
-
-- Hermes Agent installed
-- `image-composer-tool` binary in the project directory
-- `image-templates/` directory with canonical templates (from the build tool)
-- Python package `pyyaml` (for the scripts) — `pip install pyyaml` if missing
-
-### Step 1: Archive on the source machine
-
 ```bash
-tar czf hermes-skills.tar.gz -C /data/hermes/osic skills/
+# Archive skills (everything under skills/ is portable)
+tar czf image-builder-skills.tar.gz skills/ tutorial.md README.md
+
+# Transfer & extract on the target
+tar xzf image-builder-skills.tar.gz -d /path/to/project
+
+# Install into Hermes (optional)
+cp -r skills/image-composer-build ~/.hermes/skills/devops/
+cp -r skills/image-composer-custom ~/.hermes/skills/devops/
 ```
 
-### Step 2: Transfer the archive
-
-```bash
-# Examples:
-scp hermes-skills.tar.gz user@target-machine:~/
-# or rsync, USB, cloud storage, etc.
-```
-
-### Step 3: Extract on the target machine
-
-```bash
-# Extract into the project directory
-mkdir -p /path/to/project
-tar xzf hermes-skills.tar.gz -C /path/to/project
-```
-
-### Step 4: Install skills into Hermes (if you want them in Hermes directly)
-
-To use them with `skill_view()` / `skills_list()` in Hermes:
-
-```bash
-cp -r /path/to/project/skills/image-composer-build ~/.hermes/skills/devops/
-cp -r /path/to/project/skills/image-composer-custom ~/.hermes/skills/devops/
-cp -r /path/to/project/skills/user-templates ~/.hermes/user-templates/
-```
-
-Or just reference the files directly from the project directory.
-
----
-
-## Quick Reference
-
-### Build the custom ROS2 image
-
-```bash
-cd /data/hermes/osic
-sudo -E ./image-composer-tool build ~/.hermes/user-templates/ros2-with-tools.yml
-```
-
-### Create a new custom image variant
-
-```bash
-python3 ~/.hermes/skills/devops/image-composer-custom/scripts/customize-template.py \
-  <base-template.yml> \
-  --name my-custom-image \
-  --add-packages "pkg1,pkg2" \
-  --add-repo "http://example.com/repo noble main" \
-  --build
-```
-
-### List available base templates
-
-```bash
-python3 ~/.hermes/skills/devops/image-composer-build/scripts/list-templates.py
-# Filter by keyword:
-python3 ~/.hermes/skills/devops/image-composer-build/scripts/list-templates.py ros2
-```
+On the target machine you also need the `image-composer-tool` binary and
+the `image-templates/` directory from the upstream repo.
